@@ -9,7 +9,9 @@
 
 use super::data::{Category, CategoryName};
 use crate::SettingsSource;
-use anyhow::{format_err, Result};
+use anyhow::{format_err, Context, Result};
+use lazy_static::lazy_static;
+use regex::Regex;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -66,6 +68,7 @@ impl LandscapeSettings {
     fn new_from_file(file: &Path) -> Result<Self> {
         let raw_data = fs::read_to_string(file)?;
         let settings: LandscapeSettings = serde_yaml::from_str(&raw_data)?;
+        settings.validate().context("the landscape settings file provided is not valid")?;
 
         Ok(settings)
     }
@@ -81,9 +84,46 @@ impl LandscapeSettings {
         }
         let raw_data = resp.text().await?;
         let settings: LandscapeSettings = serde_yaml::from_str(&raw_data)?;
+        settings.validate().context("the landscape settings file provided is not valid")?;
 
         Ok(settings)
     }
+
+    /// Validate landscape settings
+    fn validate(&self) -> Result<()> {
+        // Check foundation is not empty
+        if self.foundation.is_empty() {
+            return Err(format_err!("foundation cannot be empty"));
+        }
+
+        // Check colors format
+        if let Some(colors) = &self.colors {
+            let colors = [
+                ("color1", &colors.color1),
+                ("color2", &colors.color2),
+                ("color3", &colors.color3),
+                ("color4", &colors.color4),
+                ("color5", &colors.color5),
+                ("color6", &colors.color6),
+            ];
+            for (name, value) in colors {
+                if !RGBA.is_match(value) {
+                    return Err(format_err!(
+                        r#"{name} is not valid (format: "rgba(0, 107, 204, 1)")"#
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+lazy_static! {
+    /// RGBA regular expression.
+    pub(crate) static ref RGBA: Regex =
+        Regex::new(r"rgba?\(((25[0-5]|2[0-4]\d|1\d{1,2}|\d\d?)\s*,\s*?){2}(25[0-5]|2[0-4]\d|1\d{1,2}|\d\d?)\s*,?\s*([01]\.?\d*?)\)")
+            .expect("exprs in RGBA to be valid");
 }
 
 /// Colors used across the landscape UI.
