@@ -115,6 +115,48 @@ impl LandscapeSettings {
             }
         }
 
+        // Check groups are valid
+        if let Some(groups) = &self.groups {
+            for (group_index, group) in groups.iter().enumerate() {
+                let group_id = if group.name.is_empty() {
+                    format!("{group_index}")
+                } else {
+                    group.name.clone()
+                };
+                if group.name.is_empty() {
+                    return Err(format_err!("group [{group_id}] name cannot be empty"));
+                }
+                for (category_index, category) in group.categories.iter().enumerate() {
+                    if category.is_empty() {
+                        return Err(format_err!(
+                            "group [{group_id}]: category [{category_index}] cannot be empty"
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Check categories are valid
+        if let Some(categories) = &self.categories {
+            for (category_index, category) in categories.iter().enumerate() {
+                let category_id = if category.name.is_empty() {
+                    format!("{category_index}")
+                } else {
+                    category.name.clone()
+                };
+                if category.name.is_empty() {
+                    return Err(format_err!("category [{category_id}] name cannot be empty"));
+                }
+                for (subcategory_index, subcategory) in category.subcategories.iter().enumerate() {
+                    if subcategory.is_empty() {
+                        return Err(format_err!(
+                            "category [{category_id}]: subcategory [{subcategory_index}] cannot be empty"
+                        ));
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }
